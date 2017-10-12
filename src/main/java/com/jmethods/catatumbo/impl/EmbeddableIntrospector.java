@@ -17,11 +17,13 @@
 package com.jmethods.catatumbo.impl;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.jmethods.catatumbo.Embeddable;
 import com.jmethods.catatumbo.Embedded;
 import com.jmethods.catatumbo.EntityManagerException;
+import com.jmethods.catatumbo.MappedSuperClass;
 
 /**
  * Introspects an {@link Embeddable} class and prepares the metadata for the class.
@@ -79,10 +81,29 @@ public class EmbeddableIntrospector {
   }
 
   /**
+   * Processes the Embeddable class and any super classes that are
+   * MappedSupperClasses and returns the fields.
+   *
+   * @return all fields of the entity hierarchy.
+   */
+  private List<Field> getAllFields() {
+    List<Field> allFields = new ArrayList<>();
+    Class<?> clazz = embeddableClass;
+    boolean stop;
+    do {
+      List<Field> fields = IntrospectionUtils.getPersistableFields(clazz);
+      allFields.addAll(fields);
+      clazz = clazz.getSuperclass();
+      stop = clazz == null || !clazz.isAnnotationPresent(MappedSuperClass.class);
+    } while (!stop);
+    return allFields;
+  }
+
+  /**
    * Processes each field in this Embeddable and updates the metadata.
    */
   private void processFields() {
-    List<Field> fields = IntrospectionUtils.getPersistableFields(embeddableClass);
+    List<Field> fields = getAllFields();
     for (Field field : fields) {
       if (field.isAnnotationPresent(Embedded.class)) {
         processEmbeddedField(field);
